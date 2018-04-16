@@ -1,0 +1,273 @@
+<html>
+  <head>
+    <script src="https://code.createjs.com/createjs-2015.11.26.min.js"></script>
+	<script src="https://code.createjs.com/tweenjs-0.6.2.min.js"></script>
+    <script> 
+      //Params.	  
+	  var fixated = 0;	
+	  var stage;	
+	  var fixation_duration = 900
+	  var saccade = 2500
+	  
+	  
+	  //Data.
+	  var ecc_dict = {};
+	  var filter_dict = {}
+	  var col_obs = [
+						[0.2, 0.4, 0.5, 0.6, 0.5, 0.3, 0.5, 0.8, 0.8, 0.7, 0.7, 0.5, 0.8, 1.0, 1.0, 0.7, 0.6, 0.5, 0.8, 1.0, 0.9, 0.7, 0.4, 0.3, 0.7, 0.8, 0.8, 0.7, 0.5, 0.2, 0.2, 0.4, 0.5, 0.5, 0.4, 0.21],
+						
+						[0.7, 0.3, 0.4, 0.5, 0.4, 0.2, 0.0, 0.9, 0.7, 0.6, 0.5, 0.4, 1.0, 1.0, 0.8, 0.5, 0.5, 0.4, 0.8, 1.0, 0.9, 0.8, 0.7, 0.4, 0.4, 0.6, 0.8, 1.0, 0.8, 0.5, 0.1, 0.3, 0.5, 0.7, 0.7, 0.4],
+						
+						[0.1, 0.4, 0.6, 0.7, 0.3, 0.1, 0.4, 0.8, 0.9, 0.9, 0.5, 0.2, 0.5, 0.9, 0.9, 0.9, 0.6, 0.4, 0.8, 1.0, 1.0, 0.9, 0.5, 0.2, 0.8, 0.8, 1.0, 1.0, 0.8, 0.4, 0.0, 0.1, 0.7, 0.9, 0.7, 0.4],
+						
+						[0.0, 0.2, 0.5, 0.8, 0.9, 0.2, 0.2, 0.5, 0.7, 0.9, 1.0, 0.9, 0.5, 0.8, 0.8, 0.5, 0.3, 0.6, 0.7, 1.0, 0.9, 0.7, 0.5, 0.3, 0.7, 1.0, 0.7, 0.7, 0.5, 0.4, 0.4, 0.6, 0.4, 0.4, 0.4, 0.3],
+						
+						[0.3, 0.4, 0.4, 0.7, 0.7, 0.5, 0.6, 0.8, 0.7, 0.8, 0.9, 0.6, 0.7, 1.0, 1.0, 0.7, 0.7, 0.5, 0.8, 1.0, 0.9, 0.9, 0.6, 0.3, 0.5, 0.8, 1.0, 1.0, 0.7, 0.3, 0.1, 0.0, 1.0, 0.9, 0.5, 0.2],
+						
+						[0.0, 0.3, 0.7, 0.7, 0.5, 0.4, 0.2, 0.6, 0.9, 0.8, 0.7, 0.5, 0.3, 0.7, 0.9, 0.4, 0.2, 0.5, 0.5, 0.8, 0.9, 0.9, 1.0, 0.2, 0.2, 0.5, 0.9, 1.0, 0.9, 0.3, 0.0, 0.2, 0.6, 0.8, 0.7, 0.4]
+					];
+
+					
+ 	  var col_state = [
+						[0.2, 0.4, 0.5, 0.6, 0.5, 0.3, 0.5, 0.8, 0.8, 0.7, 0.7, 0.5, 0.8, 1.0, 1.0, 0.7, 0.6, 0.5, 0.8, 1.0, 0.9, 0.7, 0.4, 0.3, 0.7, 0.8, 0.8, 0.7, 0.5, 0.2, 0.2, 0.4, 0.5, 0.5, 0.4, 0.21],
+						
+						[0.6, 0.4, 0.4, 0.5, 0.4, 0.2, 0.0, 0.9, 0.8, 0.7, 0.6, 0.5, 1.0, 1.0, 0.9, 0.7, 0.6, 0.5, 0.8, 1.0, 0.9, 0.7, 0.5, 0.3, 0.6, 0.8, 0.8, 0.8, 0.5, 0.3, 0.2, 0.4, 0.5, 0.6, 0.5, 0.3],
+						
+						[0.6, 0.4, 0.5, 0.6, 0.4, 0.2, 0.0, 0.9, 0.8, 0.7, 0.6, 0.4, 0.9, 1.0, 0.9, 0.7, 0.6, 0.4, 0.8, 1.0, 0.9, 0.7, 0.5, 0.2, 0.7, 0.8, 0.9, 0.9, 0.7, 0.3, 0.0, 0.2, 0.6, 0.7, 0.6, 0.3],
+						
+						[0.6, 0.3, 0.5, 0.7, 0.9, 0.2, 0.0, 0.9, 0.8, 0.9, 1.0, 0.9, 0.9, 1.0, 0.9, 0.6, 0.3, 0.5, 0.8, 1.0, 0.9, 0.7, 0.5, 0.3, 0.7, 0.8, 0.8, 0.9, 0.6, 0.3, 0.0, 0.2, 0.6, 0.7, 0.5, 0.3],
+						
+						[0.6, 0.3, 0.5, 0.7, 0.8, 0.2, 0.0, 0.9, 0.8, 0.9, 1.0, 0.8, 0.9, 1.0, 0.9, 0.6, 0.4, 0.5, 0.8, 1.0, 0.9, 0.8, 0.5, 0.3, 0.7, 0.8, 0.9, 0.9, 0.6, 0.3, 0.0, 0.1, 1.0, 0.8, 0.5, 0.3],
+						
+						[0.6, 0.3, 0.5, 0.7, 0.8, 0.2, 0.0, 0.9, 0.8, 0.8, 1.0, 0.8, 0.9, 1.0, 0.9, 0.5, 0.3, 0.5, 0.8, 1.0, 0.9, 0.9, 1.0, 0.2, 0.7, 0.8, 0.9, 1.0, 0.8, 0.3, 0.0, 0.1, 1.0, 0.8, 0.6, 0.3]
+					];					
+					
+					
+	  var state_ecc = [
+						[5.69, 5.40, 5.69, 6.49, 7.64, 9.00, 4.03, 3.60, 4.03, 5.09, 6.49, 8.05, 2.55, 1.80, 2.55, 4.03, 5.69, 7.42, 1.80, 0.0, 1.80, 3.60, 5.40, 7.20, 2.55, 1.80, 2.55, 4.03, 5.69, 7.42, 4.03, 3.60, 4.03, 5.09, 6.49, 8.05],
+						
+						[1.72, 2.30, 3.29, 4.28, 5.32, 6.43, 0.0, 1.61, 2.68, 3.70, 4.82, 6.00, 1.47, 1.47, 2.15, 3.29, 4.52, 5.77, 1.61, 0.0, 1.70, 3.15, 4.48, 5.78, 2.30, 1.72, 2.37, 3.56, 4.81, 6.06, 3.51, 3.24, 3.60, 4.43, 5.47, 6.60],
+						
+						[1.69, 2.23, 3.11, 3.96, 4.83, 5.74, 0.0, 1.57, 2.55, 3.43, 4.36, 5.32, 1.42, 1.42, 2.04, 3.02, 4.04, 5.06, 1.47, 0.0, 1.61, 2.83, 3.92, 4.96, 1.42, 1.42, 2.04, 3.02, 4.04, 5.06, 0.0, 1.57, 2.55, 3.43, 4.36, 5.32],
+						
+						[1.64, 2.08, 2.46, 2.14, 1.69, 2.33, 0.0, 1.51, 2.08, 1.59, 0.0, 1.71, 1.39, 1.38, 1.82, 1.95, 1.64, 2.27, 1.45, 0.0, 1.54, 2.32, 2.65, 3.13, 1.40, 1.40, 1.95, 2.67, 3.23, 3.78, 0.0, 1.55, 2.43, 3.11, 3.73, 4.33],
+						
+						[1.62, 2.03, 2.37, 2.09, 1.66, 2.27, 0.0, 1.48, 2.00, 1.56, 0.0, 1.68, 1.36, 1.34, 1.73, 1.84, 1.59, 2.18, 1.39, 0.0, 1.41, 2.01, 2.35, 2.82, 1.32, 1.23, 1.32, 1.84, 2.52, 3.15, 0.0, 1.17, 0.0, 1.56, 2.59, 3.38],
+						
+						[1.60, 1.96, 2.23, 1.96, 1.59, 2.11, 0.0, 1.44, 1.86, 1.45, 0.0, 1.55, 1.34, 1.31, 1.59, 1.49, 1.19, 1.66, 1.37, 0.0, 1.31, 1.34, 0.0, 1.52, 1.30, 1.20, 1.26, 1.49, 1.46, 1.98, 0.0, 1.16, 0.0, 1.45, 2.10, 2.59]
+					];
+					
+					
+      function init() {
+	    eccentricity_init()
+	    stage = new createjs.Stage("demoCanvas");
+		var list = [28, 11, 0, 34, 35, 27, 14, 19, 32, 21, 12, 10, 25, 13, 4, 22, 2, 18, 20, 24, 33, 17, 7, 9, 8, 26, 3];
+		var targetPos = -1;		
+		var pex = 45
+		var pex_x = 14
+		var pex_y = 17
+		var x_obj = 200
+		var y_obj = 200
+		var state_x_obj = 600
+		var state_y_obj = 200
+		var pos = 0
+		var dict = {};
+		dict[(""+(-1))] = 100+","+100;
+		var blurFilter = new createjs.BlurFilter(100, 100, 1)
+		
+		
+		
+		obs_text = new createjs.Text("OBSERVATION:", "35px Arial", "black");
+		obs_text.x = 200
+		obs_text.y = 100
+		stage.addChild(obs_text);
+		
+		state_text = new createjs.Text("STATE:", "35px Arial", "black");
+		state_text.x = 600
+		state_text.y = 100
+		stage.addChild(state_text);
+		
+		for (row = 0; row < 6; row++) {
+			for (col = 0; col < 6; col++){
+				var child
+				var state_child
+				if (targetPos != -1 & targetPos == pos){
+					child = new createjs.Text("O", "42px Arial", "red");
+					state_child = new createjs.Text("O", "42px Arial", "red");
+				}
+				else if (arrayContains(pos, list)){
+					child = new createjs.Text("X", "42px Arial", "red");
+					state_child = new createjs.Text("X", "42px Arial", "red");
+				}
+				else{
+					child = new createjs.Text("O", "42px Arial", "green");
+					state_child = new createjs.Text("O", "42px Arial", "green");
+				}
+				var ecc = eccentricity(Math.floor(fixated/6), Math.floor(fixated%6), Math.floor(pos/6), Math.floor(pos%6));
+				child.x = x_obj;
+				child.y = y_obj;
+				state_child.x = state_x_obj
+				state_child.y = state_y_obj
+				
+				child.name = ""+pos;
+				state_child.name = "state"+pos;
+				
+				child.filters = [blurFilter];
+				state_child.filters = [blurFilter];
+				child.cache(child.getBounds().x, child.getBounds().y, child.getBounds().width, child.getBounds().height);
+				state_child.cache(state_child.getBounds().x, state_child.getBounds().y, state_child.getBounds().width, state_child.getBounds().height);
+							
+				dict[(""+pos)] = x_obj+","+y_obj;
+				
+				x_obj = x_obj + pex + pex_x
+				state_x_obj = state_x_obj + pex + pex_x
+				
+				stage.addChild(child);
+				stage.addChild(state_child);
+				pos += 1;
+			}
+			
+			y_obj = y_obj + pex + pex_y
+			state_y_obj = state_y_obj + pex + pex_y
+			
+			x_obj = 200
+			state_x_obj = 600
+		}
+		
+		var val = dict["-1"].split(",")
+		var circle = new createjs.Shape(new createjs.Graphics().beginStroke("black").drawCircle(12, 20, 39));
+        circle.x = Number(val[0]);
+        circle.y = Number(val[1]);
+        stage.addChild(circle);
+		
+		
+		var tween = createjs.Tween.get(circle, { loop: false });
+		
+		val = dict["19"].split(",")
+		tween.wait(fixation_duration).to({ x: Number(val[0]), y: Number(val[1]) }, saccade, createjs.Ease.linear).call(handleChange, [19, 0]);
+		
+		tween.wait(fixation_duration);
+		
+		val = dict["6"].split(",")
+		tween.to({ x: Number(val[0]), y: Number(val[1]) }, saccade, createjs.Ease.linear).call(handleChange, [6, 1]);
+		
+		
+		tween.wait(fixation_duration);
+		
+		val = dict["30"].split(",")
+		tween.to({ x: Number(val[0]), y: Number(val[1]) }, saccade, createjs.Ease.linear).call(handleChange, [30, 2]);
+
+		
+		tween.wait(fixation_duration);
+		
+		val = dict["10"].split(",")
+		tween.to({ x: Number(val[0]), y: Number(val[1]) }, saccade, createjs.Ease.linear).call(handleChange, [10, 3]);		
+
+		
+		tween.wait(fixation_duration);
+		
+		val = dict["32"].split(",")
+		tween.to({ x: Number(val[0]), y: Number(val[1]) }, saccade, createjs.Ease.linear).call(handleChange, [32, 4]);	
+
+		
+		tween.wait(fixation_duration);
+		
+		val = dict["22"].split(",")
+		tween.to({ x: Number(val[0]), y: Number(val[1]) }, saccade, createjs.Ease.linear).call(handleChange, [22, 5]);	
+		
+		
+		tween.wait(fixation_duration);
+		
+		val = dict["22"].split(",")
+		tween.to({ x: Number(val[0]), y: Number(val[1]) }, 120, createjs.Ease.linear).call(handleChange, [36, 5]);
+				
+		
+		createjs.Ticker.setFPS(60);
+		createjs.Ticker.addEventListener("tick", stage);
+		
+      }
+	  
+	  function handleChange(fixated, index) {
+        
+		if (fixated == 36){
+			response_text = new createjs.Text("TARGET IS ABSENT", "35px Arial", "black");
+			response_text.x = 200
+			response_text.y = 600
+			stage.addChild(response_text);
+		}
+		else if (fixated == 37){
+			response_text = new createjs.Text("TARGET IS PRESENT", "35px Arial", "black");
+			response_text.x = 200
+			response_text.y = 600
+			stage.addChild(response_text);
+		}
+		else {
+			for (i=0; i < 36; i++){
+				child = stage.getChildByName((""+i));
+				state_child = stage.getChildByName(("state"+i));
+			
+				var ecc = eccentricity(Math.floor(fixated/6), Math.floor(fixated%6), Math.floor(i/6), Math.floor(i%6));
+			
+				child.filters = [filter_dict[(""+ecc)], new createjs.ColorFilter(0,0,0,1,col_obs[index][i] * 255, (1-col_obs[index][i]) * 255,0,0)];
+				child.cache(child.getBounds().x, child.getBounds().y, child.getBounds().width, child.getBounds().height);
+			
+				state_child.filters = [new createjs.BlurFilter(state_ecc[index][i]*2, state_ecc[index][i]*2, 1), new createjs.ColorFilter(0,0,0,1,col_obs[index][i] * 255, (1-col_obs[index][i]) * 255,0,0)];
+				state_child.cache(state_child.getBounds().x, state_child.getBounds().y, state_child.getBounds().width, state_child.getBounds().height);
+			}
+		}
+	  }
+		
+	  function arrayContains(needle, arrhaystack){
+		return (arrhaystack.indexOf(needle) > -1);
+	  }
+
+	  function reservoir_sampling(samples) {
+		
+		var sample_list = Array.apply(null, {length: 36}).map(Number.call, Number);
+		
+		var random_list = new Array(samples);
+		
+		var count = 0
+		
+		for(var i=0;i<sample_list.length;i++){
+			if (count < samples){
+				random_list[count] = sample_list[i];
+			}
+			else{
+				var randomPos = Math.floor(Math.random() * count) + 0;
+				if (randomPos < samples){
+					random_list[randomPos] = sample_list[i]
+				}
+				
+			}
+			count = count + 1
+			
+		}
+		
+		return random_list
+		
+	  }
+	  function eccentricity(fix_x, fix_y, ext_x, ext_y) {
+		return ecc_dict[(fix_x+","+fix_y+","+ext_x+","+ext_y)]
+	  }	 
+
+	  function eccentricity_init() {
+		for (var fix = 0; fix < 36; fix++){
+			for (var ext = 0; ext < 36; ext++ ){
+				var a = Math.floor(fix/6) - Math.floor(ext/6);
+				var b = Math.floor(fix%6) - Math.floor(ext%6);
+				var ecc = Math.sqrt( a*a + b*b );
+				ecc_dict[(Math.floor(fix/6)+","+Math.floor(fix%6)+","+Math.floor(ext/6)+","+Math.floor(ext%6))] = ecc;
+				filter_dict[(""+ecc)] = new createjs.BlurFilter(ecc*2, ecc*2, 1)
+			}
+		}
+		//var str = JSON.stringify(ecc_dict);
+		//console.log(str);
+	  }	  
+		
+    </script>
+  </head>
+  <body onload="init();">
+    <canvas id="demoCanvas" width="1000" height="1000"></canvas>
+  </body>
+</html>
