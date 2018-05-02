@@ -24,3 +24,17 @@ def updateTarget(op_holder,sess):
     #else:
      #   print "Target Set Failed"
 
+
+def huber_loss(y_true, y_pred, clip_value):
+
+   x = y_true - y_pred
+
+   condition = tf.abs(x) < clip_value
+   squared_loss = .5 * tf.square(x)
+   linear_loss = clip_value * (tf.abs(x) - .5 * clip_value)
+
+   if hasattr(tf, 'select'):
+        return tf.select(condition, squared_loss, linear_loss)  # condition, true, false
+   else:
+        return tf.where(condition, squared_loss, linear_loss) # condition, true, false
+

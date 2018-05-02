@@ -51,4 +51,4 @@ class Display(object):
         for row in range(0, N_ROWS, 1):
             for col in range(0, N_ROWS, 1):
                 self.colour[row][col] = feature_matrix[row][col]
-                self.shape[row][col] = -1 * feature_matrix[row][col]
+                self.shape[row][col] = 1 - feature_matrix[row][col]

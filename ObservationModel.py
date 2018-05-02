@@ -1,12 +1,10 @@
 from GlobalConstants import *
-from DisplayGenerator import DisplayGenerator
-from GlobalVariables import GlobalVariables
 import numpy as np
 from math import sqrt
 from math import exp
 from math import pi
-
-np.set_printoptions(suppress=True)
+from GlobalVariables import GlobalVariables
+from DisplayGenerator import DisplayGenerator 
 
 class ObservationModel(object):
 
@@ -18,62 +16,69 @@ class ObservationModel(object):
         """
         x = action / N_ROWS
         y = action % N_ROWS
-        obs_space_col = self.observe_feature(current_display.get_colour(), x, y, global_variables, FEATURE_COLOUR)
-        obs_space_shp = self.observe_feature(current_display.get_shape(), x, y, global_variables, FEATURE_SHAPE)
-        
-	return obs_space_col, obs_space_shp
+	obs_space = np.zeros((N_ROWS, N_ROWS, 2))
+        obs_space = self.observe_feature(current_display.get_colour(), obs_space, x, y, global_variables, "COLOUR")
+        obs_space = self.observe_feature(current_display.get_shape(), obs_space, x, y, global_variables, "SHAPE")
 
-    def observe_feature(self, features, x, y, global_variables, feature):
-
-	observation = self.add_keras_feature_noise(features, x, y, global_variables, feature)
-        
-	#temp = self.add_feature_noise(features, x, y, global_variables, feature)
-
-       	#observation = self.add_spatial_noise(temp, x, y, global_variables, feature)
-
-        return observation
-
-    def add_feature_noise(self, obs, x, y, global_variables, feature):
-	obs_space = np.zeros((N_ROWS, N_ROWS))
-	for ext_x in range(0, N_ROWS, 1):
-		for ext_y in range(0, N_ROWS, 1):
-			obs_space[ext_x][ext_y] = obs[ext_x][ext_y] + np.random.normal(0, global_variables.get_feature_noise_sd(x, y, ext_x, ext_y, feature), 1)[0]
-	
-	return obs_space	
-	
-
-    def add_keras_feature_noise(self, obs, x, y, global_variables, feature):
-        obs_space = np.ones((N_ROWS, N_ROWS)) * -1
-        for ext_x in range(0, N_ROWS, 1):
-            for ext_y in range(0, N_ROWS, 1):
-                
-		e = global_variables.get_eccentricity(x, y, ext_x, ext_y)	
-		
-		X = np.random.normal(FEATURE_SIZE, 0.7*FEATURE_SIZE)
-
-		if feature == FEATURE_COLOUR:
-			threshold = (0.035 * e * e) + (0.1 * e) + 0.1
-			if (FEATURE_SIZE + X) > threshold:
-				obs_space[ext_x][ext_y] = obs[ext_x][ext_y]
-			else:
-				obs_space[ext_x][ext_y] = 0
-		else:
-			threshold = (0.3 * e * e) + (0.1 * e) + 0.1
-			if (FEATURE_SIZE + X) > threshold:
-				obs_space[ext_x][ext_y] = obs[ext_x][ext_y]
-			else:
-				obs_space[ext_x][ext_y] = 0
-
-				
         return obs_space
 
-    def add_spatial_noise(self, obs, x, y, global_variables, feature):
-        obs_space = np.zeros((N_ROWS, N_ROWS))
+    def observe_feature(self, features, obs_space, x, y, global_variables, feature_type):
+
+        temp = self.add_spatial_noise(features, obs_space, x, y, global_variables, feature_type)
+
+	obs_space = self.add_keras_feature_noise(temp, obs_space, x, y, global_variables, feature_type)
+	
+        return obs_space
+	
+    def add_keras_feature_noise(self, obs, obs_space, x, y, global_variables, feature_type):
+
         for ext_x in range(0, N_ROWS, 1):
             for ext_y in range(0, N_ROWS, 1):
-                sigma = global_variables.get_spatial_noise_sd(x, y, ext_x, ext_y, feature)
-                kernel = self.generate_gaussian_kernel(sigma)
-                obs_space[ext_x][ext_y] = self.single_value_convolution(obs, ext_x, ext_y, kernel)
+
+                e = global_variables.get_eccentricity(x, y, ext_x, ext_y)
+
+                X = np.random.normal(FEATURE_SIZE, 0.7*FEATURE_SIZE)
+
+                if feature_type == "COLOUR":
+                        threshold = (0.035 * e * e) + (0.1 * e) + 0.1
+                        if (FEATURE_SIZE + X) > threshold:
+                                obs_space[ext_x,ext_y,0] = obs[ext_x,ext_y,0]
+                        else:
+                                obs_space[ext_x,ext_y,0] = 0.5
+                else:
+                        threshold = (0.3 * e * e) + (0.1 * e) + 0.1
+                        if (FEATURE_SIZE + X) > threshold:
+                                obs_space[ext_x,ext_y,1] = obs[ext_x,ext_y,1]
+                        else:
+                                obs_space[ext_x,ext_y,1] = 0.5
+
+
+        return obs_space
+	
+
+    def add_feature_noise(self, features, obs_space, x, y, global_variables, feature_type):
+       
+        for ext_x in range(0, N_ROWS, 1):
+            for ext_y in range(0, N_ROWS, 1):
+		if feature_type == "COLOUR":
+                	obs_space[ext_x][ext_y] = np.clip(features[ext_x][ext_y] + np.random.normal(0, global_variables.get_feature_noise_colour_sd(x, y, ext_x, ext_y), 1)[0],0,1)
+		else:
+			obs_space[ext_x][ext_y] = np.clip(features[ext_x][ext_y] + np.random.normal(0, global_variables.get_feature_noise_shape_sd(x, y, ext_x, ext_y), 1)[0],0,1)
+
+        return obs_space
+
+    def add_spatial_noise(self, features, obs_space, x, y, global_variables, feature_type):
+        for ext_x in range(0, N_ROWS, 1):
+            for ext_y in range(0, N_ROWS, 1):
+		if feature_type == "COLOUR":
+                	sigma = global_variables.get_spatial_noise_colour_sd(x, y, ext_x, ext_y)
+			kernel = self.generate_gaussian_kernel(sigma)
+			obs_space[ext_x,ext_y,0] = self.single_value_convolution(features, ext_x, ext_y, kernel)
+		else:
+			sigma = global_variables.get_spatial_noise_shape_sd(x, y, ext_x, ext_y)
+			kernel = self.generate_gaussian_kernel(sigma)
+                        obs_space[ext_x,ext_y,1] = self.single_value_convolution(features, ext_x, ext_y, kernel)
+
 
         return obs_space
 
@@ -129,22 +134,20 @@ class ObservationModel(object):
         return output
 
 
-gen = DisplayGenerator()
+#######TEST########
+#g_var = GlobalVariables()
 
-display = gen.generate_random_display()
+#generator = DisplayGenerator()
 
-print display.get_colour()
-print " "
-print display.get_shape()
-print " "
-print display.get_target_status()
-var = GlobalVariables()
+#disp = generator.generate_random_display()
 
-model = ObservationModel()
+#print disp.get_colour()
 
-obs_col, obs_shp = model.sample(14, display, var)
+#print disp.get_shape()
 
-print obs_col
-print "  "
-print obs_shp
+#model = ObservationModel()
+
+#obs = model.sample(8, disp, g_var)
+
+#print obs
 

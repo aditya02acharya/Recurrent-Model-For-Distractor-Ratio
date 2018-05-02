@@ -14,17 +14,19 @@ class DisplayGenerator(object):
 
         display = Display()
 
-        features = np.ones((N_ROWS, N_ROWS)) * -1
+        features = np.zeros((N_ROWS, N_ROWS))
 
         #randomly choose target status for a given display. Either present : 1 or absent : 0
         target_status = randint(0,1)
 
         #randomly choose the distractor ratio for the given
         same_colour_ratio = RATIO[randint(0,len(RATIO)-1)]
-
+	#print "same colour ratio : "
+	#print same_colour_ratio
         shuffle(self.sample_list)
         random_list = self.reservoir_sampling(same_colour_ratio, self.sample_list)
-
+	#print "locations for target colour: "
+	#print random_list
         for item in random_list:
             features[int(item/N_ROWS)][int(item%N_ROWS)] = TRUE
 
