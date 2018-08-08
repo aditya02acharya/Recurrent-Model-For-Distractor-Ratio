@@ -1,141 +1,117 @@
-import numpy as np
-import random
+# -*- coding: utf-8 -*-
+"""
+Created on Sat May 19 09:25:48 2018
+
+@author: Aditya
+"""
+
+from GlobalConstants import MAX_ACTIONS, N_DR_ELEMENTS, N_ROWS
 import tensorflow as tf
-import itertools
-import csv
-import tensorflow.contrib.slim as slim
+import os
+import numpy as np
+from time import sleep
 
-from Qnetwork import Qnetwork
+from AC_Network import AC_Network
+from Worker import Worker
 from Environment import Environment
-from GlobalConstants import N_ROWS, MAX_STEPS, MAX_ACTIONS, N_DR_ELEMENTS
 from helper import *
-from Experience_Buffer import *
 
-
-num_episodes = 10 #How many episodes of game environment to train network with.
-load_model = True #Whether to load a saved model.
-path = "./Model" #The path to save/load our model to/from.
-h_size = 36 #The size of the final convolutional layer before splitting it into Advantage and Value streams.
-h_size = 36 #The size of the final convolutional layer before splitting it into Advantage and Value streams.
-max_epLength = 8 #The max allowed length of our episode.
-summaryLength = 100
-
-tf.reset_default_graph()
-cell = tf.contrib.rnn.BasicLSTMCell(num_units=h_size, state_is_tuple=True)
-cellT = tf.contrib.rnn.BasicLSTMCell(num_units=h_size, state_is_tuple=True)
-
-mainQN = Qnetwork(h_size,cell,'main')
-targetQN = Qnetwork(h_size,cellT,'target')
-
-init = tf.global_variables_initializer()
-
-saver = tf.train.Saver(max_to_keep=2)
-
-#create lists to contain total rewards and steps per episode
-jList = []
-rList = []
-total_steps = 0
+max_episode_length = 36
+num_episodes = 1
+gamma = .99 # discount rate for advantage estimation and reward discounting
+s_size = N_DR_ELEMENTS # Observations are 6 * 6 matrix
+a_size = MAX_ACTIONS # Agent can fixate on 36 possible locations and one stop action.
+dropout=0.8
+load_model = True
+model_path = './Model'
+episode_rewards = []
+episode_lengths = []
+episode_durations = []
+episode_features = []
 env = Environment()
 
+tf.reset_default_graph()
+
+if not os.path.exists(model_path):
+    os.makedirs(model_path)
+
+with tf.device("/cpu:0"): 
+    master_network = AC_Network(s_size,a_size,dropout,'global',None) # Generate global network
+    saver = tf.train.Saver(max_to_keep=5)
+    
 with tf.Session() as sess:
-	if load_model == True:
-		print ('Loading Model...')
-        	ckpt = tf.train.get_checkpoint_state(path)
-        	saver.restore(sess,ckpt.model_checkpoint_path)
 
-	else:
-        	sess.run(init)
-	
-	#for op in tf.get_default_graph().get_operations():
-    	#	print str(op.name) 
-	#with tf.variable_scope('main_conv', reuse=True) as scope_conv:
-    	#	W_conv1 = tf.get_variable('weights')
-    	#	weights = W_conv1.eval()
-	#	print weights
+    if load_model == True:
+        print ('Loading Model...')
+        ckpt = tf.train.get_checkpoint_state(model_path)
+        saver.restore(sess,ckpt.model_checkpoint_path)
+    else:
+        sess.run(tf.global_variables_initializer())
 
-	fixFile = open("fixationhistory.csv",'w')
-	metricFile = open("testMetricsLog.csv",'w')
-	actionFile = open("actionhistory.csv",'w')
-	
+    fixFile = open("fixationhistory.csv",'w')
+    metricFile = open("testMetricsLog.csv",'w')
+    actionFile = open("actionhistory.csv",'w')
+    
+    for i in range(num_episodes):
+        print(i)
+        episode_buffer = []
+        episode_values = []
+        action_history = []
+        fixation_history = [0]*10
+        episode_reward = 0
+        previous_action = -1
+        episode_step_count = 0
+        d = False     
+        s,f = env.reset()
+        #print(env.get_display().get_colour())
+        #print(env.get_display().get_shape()) 
+        rnn_state = master_network.state_init
+        batch_rnn_state = rnn_state
+        ecc = []
+                
+        while d == False:
+            #Take an action using probabilities from policy network output.
+            a_dist,v,rnn_state,conv = sess.run([master_network.policy,master_network.value,master_network.state_out,master_network.conv],
+                                           feed_dict={master_network.inputs:[s],
+                                           master_network.focus:[f],
+                                           master_network.trainLength:1,
+                                           master_network.state_in[0]:rnn_state[0],
+                                           master_network.state_in[1]:rnn_state[1]})
+                    
+            a = np.random.choice(len(a_dist[0]),p=a_dist[0])
+            #a = np.argmax(a_dist == a)
+            print(conv)
+            print("Taking action " + str(a))
+            action_history.append(a)                    
+            s1, f1, r, d = env.step(a)
 
-	for i in range(num_episodes):
-		print i
-		s  = env.reset()
-		#print "Observation:"
-		#print s
-		#print env.get_display().get_colour()
-		#print '============================'
-		#print env.get_display().get_shape()
-		d = False
-		rAll = 0
-		j = 0
-		action_history = []
-		fixation_history = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-		#state = (np.zeros([1,h_size]),np.zeros([1,h_size]))
-		#state = np.zeros((1, h_size), np.float32)
-		state = (np.zeros([1,h_size]),np.zeros([1,h_size]))                                                       
-		#print state
-		
-		step = 0
-		while j < max_epLength:
-			
-			a, state_next, predict, stream = sess.run([mainQN.predict,mainQN.rnn_state, mainQN.Qout, mainQN.stream],
-                                                        feed_dict={mainQN.scalarInput:[s],                                
-                                                        #mainQN.scalarShapeInput:[s_s],                                           
-                                                        mainQN.trainLength:1,                                                    
-                                                        mainQN.state_in:state,                                     
-                                                        mainQN.batch_size:1})  
-			
-			a = a[0]
-			#print "Observation After CNN: "
-			#print stream
-			#print "Action"
-			#print a
-			action_history.append(a)
-			s1, r, d = env.step(a)
-			#print s1_c
-			#print s1_s	
-			if a < N_DR_ELEMENTS and step > 0:
-				fix_x = a / N_ROWS
-				fix_y = a % N_ROWS
-				fixation_history[step] = env.get_display().get_colour()[fix_x][fix_y] * 2 + env.get_display().get_shape()[fix_x][fix_y]
-			
-			if a < N_DR_ELEMENTS:
-				step += 1
-			j += 1
-			rAll += r
-			s = s1
-			
-			state = state_next
-			#print state
-			total_steps += 1
+            if a < N_DR_ELEMENTS:
+                        fix_x = int(a / N_ROWS)
+                        fix_y = int(a % N_ROWS)
+                        fixation_history[episode_step_count] = env.get_display().get_colour()[fix_x][fix_y] * 2 + env.get_display().get_shape()[fix_x][fix_y]
 
-			if d == True:
-				break
-		
-		jList.append(j)
-        	rList.append(rAll)
+            episode_reward += r
+            s = s1
+            f = f1       
+            if a < N_DR_ELEMENTS:
+            	episode_step_count += 1             
+                    
+            if d == True:
+                break
 
-		if len(rList) % summaryLength == 0 and len(rList) != 0:
-			print (total_steps,j,np.mean(rList[-summaryLength:]))
+        for item in fixation_history:
+            fixFile.write("%s," % (str(item)))
+        fixFile.write("%s" % str(-5))
+        fixFile.write("\n")
 
-		#if step < MAX_STEPS and step > 1:
-		print "action history: "
-		print action_history
-		print "fixation history: "
-		print fixation_history 
-		for item in fixation_history:
-			fixFile.write("%s," % (str(item)))
-		fixFile.write("%s" % str(-5))
-		fixFile.write("\n")
-		metricFile.write("%s,%s,%s,%s,%s" % (str(step-1), str(rAll), str(env.get_display().get_target_status()), str(a), str(env.get_display().get_same_colour_ratio())))
+        metricFile.write("%s,%s,%s,%s,%s" % (str(episode_step_count), str(episode_reward), str(env.get_display().get_target_status()), str(a), str(env.get_display().get_same_colour_ratio())))
+        metricFile.write("\n")
+        
+        for item in action_history:
+               actionFile.write("%s," % str(item))
+        actionFile.write("\n")
 
-		metricFile.write("\n")
-		for item in action_history:
-			actionFile.write("%s," % str(item))
-		actionFile.write("\n")
 
-	fixFile.close()
-	metricFile.close()
-	actionFile.close()
-print ("Percent of succesful episodes: " + str(sum(rList)/num_episodes) + "%")
+    fixFile.close()
+    metricFile.close()
+    actionFile.close()    

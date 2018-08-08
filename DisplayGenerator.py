@@ -1,5 +1,6 @@
 from GlobalConstants import *
 import numpy as np
+import timeit
 from random import shuffle
 from random import randint
 from Display import Display
@@ -8,7 +9,8 @@ class DisplayGenerator(object):
 
     def __init__(self):
 
-        self.sample_list = range(0, N_DR_ELEMENTS, 1)
+        self.sample_list = list(range(0, N_DR_ELEMENTS, 1))
+        
 
     def generate_random_display(self):
 
@@ -21,14 +23,10 @@ class DisplayGenerator(object):
 
         #randomly choose the distractor ratio for the given
         same_colour_ratio = RATIO[randint(0,len(RATIO)-1)]
-	#print "same colour ratio : "
-	#print same_colour_ratio
-        shuffle(self.sample_list)
-        random_list = self.reservoir_sampling(same_colour_ratio, self.sample_list)
-	#print "locations for target colour: "
-	#print random_list
-        for item in random_list:
-            features[int(item/N_ROWS)][int(item%N_ROWS)] = TRUE
+
+        random_list = np.random.choice(self.sample_list, same_colour_ratio, replace=False)
+	
+        features.ravel()[random_list] = TRUE
 
         #initialize new Display
         display.add_new_display(features)
@@ -38,7 +36,7 @@ class DisplayGenerator(object):
         #randomly choose a location to place the target in the display if the target is present
         if target_status == TRUE:
             loc = randint(0,N_DR_ELEMENTS-1)
-            display.set_target(loc/N_ROWS, loc%N_ROWS)
+            display.set_target(int(loc/N_ROWS), int(loc%N_ROWS))
 
         return display
 
@@ -66,9 +64,7 @@ class DisplayGenerator(object):
         return random_list
 
 #gen = DisplayGenerator()
-
 #display = gen.generate_random_display()
+#print(display.get_colour())
 
-#print display.get_colour()
-
-#print display.get_shape()
+#print(display.get_shape())

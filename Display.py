@@ -44,11 +44,11 @@ class Display(object):
     def set_target(self, x, y):
         self.targetX = x
         self.targetY = y
-        self.colour[x][y] = TRUE
-        self.shape[x][y] = TRUE
+        self.colour[x][y] = 1
+        self.shape[x][y] = 1
 
     def add_new_display(self, feature_matrix):
-        for row in range(0, N_ROWS, 1):
-            for col in range(0, N_ROWS, 1):
-                self.colour[row][col] = feature_matrix[row][col]
-                self.shape[row][col] = 1 - feature_matrix[row][col]
+        indexes = np.nonzero(feature_matrix.ravel())
+        self.colour.ravel()[indexes] = 1
+        ind = np.where(feature_matrix.ravel() == 0)
+        self.shape.ravel()[ind] = 1

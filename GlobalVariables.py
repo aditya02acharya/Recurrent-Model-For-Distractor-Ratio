@@ -18,9 +18,9 @@ class GlobalVariables(object):
                         dist = distance.euclidean([fix_x, fix_y], [ext_x, ext_y]) * PEX
                         self.distances.update({key: dist})
                         self.sdSpatialNoiseColour.update({key: (dist / SPATIAL_NOISE_COLOUR + CONST_VAR)})
-			self.sdSpatialNoiseShape.update({key: (dist / SPATIAL_NOISE_SHAPE + CONST_VAR)})
+                        self.sdSpatialNoiseShape.update({key: (dist / SPATIAL_NOISE_SHAPE + CONST_VAR)})
                         self.sdFeatureNoiseColour.update({key: (dist / FEATURE_NOISE_COLOUR + CONST_VAR)})
-			self.sdFeatureNoiseShape.update({key: (dist / FEATURE_NOISE_SHAPE + CONST_VAR)})
+                        self.sdFeatureNoiseShape.update({key: (dist / FEATURE_NOISE_SHAPE + CONST_VAR)})
 
 
     def get_key(self, fix_x, fix_y, ext_x, ext_y):
@@ -45,10 +45,13 @@ class GlobalVariables(object):
 
     def get_spatial_noise_colour_sd(self, fix_x, fix_y, ext_x, ext_y):
         key = self.get_key(fix_x, fix_y, ext_x, ext_y)
-
         return self.sdSpatialNoiseColour.get(key)
 
     def get_spatial_noise_shape_sd(self, fix_x, fix_y, ext_x, ext_y):
         key = self.get_key(fix_x, fix_y, ext_x, ext_y)
 
         return self.sdSpatialNoiseShape.get(key)
+    
+    def print_all(self):
+        print(self.sdSpatialNoiseColour)
+        print(self.sdSpatialNoiseShape)
